@@ -3,12 +3,16 @@ import sys
 import os
 import json
 import ctypes
+import time
 from vosk import Model, KaldiRecognizer
 import pyaudio
 
 # Configuration
 MODEL_PATH = "model"
 SAMPLE_RATE = 16000
+
+# State variable
+is_awake = False    # start the app asleep
 
 # ==============
 # VOLUME CONTROL
@@ -47,6 +51,14 @@ def open_calculator():
     os.startfile("calc.exe")
     print("🧮 Opening Calculator...")
 
+def open_vscode():
+    os.startfile("code.exe")
+    print("👨‍💻 Opening VS Code...")
+
+def open_cursor():
+    os.startfile("cursor.exe")
+    print("👨‍💻 Opening Cursor...")
+
 def open_brave():
     try:
         os.startfile("brave.exe")
@@ -61,6 +73,8 @@ COMMANDS = {
     "open notepad": open_notepad,
     "open calculator": open_calculator,
     "open brave": open_brave,
+    "open v s code": open_vscode,
+    "open cursor": open_cursor,
     "volume up": volume_up,
     "volume down": volume_down,
     "mute": mute_volume,
@@ -68,6 +82,10 @@ COMMANDS = {
 
 def execute_command(text):
     text = text.lower()
+
+    if "poppy go to sleep" in text or "go to sleep poppy" in text:
+        print("😴 Poppy is going to sleep...")
+        return "sleep"              # signal
 
     # check for exit command first
     if "goodbye" in text or "stop listening" in text:
@@ -78,9 +96,21 @@ def execute_command(text):
     for keyword, action in COMMANDS.items():
         if keyword in text:
             action()
-            return True
+            return "success"
     print(f"🤔 I heard '{text}', but I don't know that command.")
     return True
+
+def check_wake_phrase(text):
+    """
+    Only run if Poppy is ASLEEP
+    """
+    text = text.lower()
+
+    if "hey poppy" in text or "hi poppy" in text or "hello poppy" in text:
+        print("⚡ Poppy is awake! Listening...")
+        return True
+    
+    return False
 
 # ==========
 # MAIN SETUP
@@ -104,8 +134,8 @@ stream = mic.open(format=pyaudio.paInt16,
 
 stream.start_stream()
 
-print("✅ Poppy is listening...")
-print("(Say 'Goodbye' to stop)\n")
+print("✅ Poppy is ready! ... but currently asleep.")
+print("🗣️ Say 'Hey Poppy' to wake me up.\n")
 
 # MAIN LISTENING LOOP
 try:
@@ -120,10 +150,13 @@ try:
             if text:
                 print(f"🗣️ You said: {text}")
 
-                # pass the text to command
-                keep_running = execute_command(text)
-                if not keep_running:
-                    break
+                if not is_awake:
+                    if check_wake_phrase(text):
+                        is_awake = True
+                else:
+                    status = execute_command(text)
+                    if status == "sleep":
+                        is_awake = False
 
 except KeyboardInterrupt:
     print("\n👋 Poppy says bye!")
