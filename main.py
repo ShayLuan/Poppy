@@ -4,6 +4,7 @@ import os
 import json
 import ctypes
 import time
+import subprocess
 from vosk import Model, KaldiRecognizer
 import pyaudio
 
@@ -66,6 +67,40 @@ def open_brave():
     except:
         print("❌ Brave not found in path.")
 
+# =====================
+# APP CLOSING FUNCTIONS
+# =====================
+
+def close_notepad():
+    try:
+        subprocess.run(["taskkill", "/IM", "notepad.exe"],
+                       stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL,
+                       creationflags=subprocess.CREATE_NO_WINDOW)
+        print("📝 Close Notepad...")
+    except Exception:
+        print("❌ Notepad wasn't open.")
+
+def close_calc():
+    try:
+        subprocess.run(["taskkill", "/IM", "calc.exe"],
+                       stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL,
+                       creationflags=subprocess.CREATE_NO_WINDOW)
+        print("🧮 Closing Calculator...")
+    except Exception:
+        print("❌ Calculator wasn't open.")
+
+def close_cursor():
+    try:
+        subprocess.run(["taskkill", "/IM", "cursor.exe"],
+                       stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL,
+                       creationflags=subprocess.CREATE_NO_WINDOW)
+        print("👨‍💻 Closing Cursor...")
+    except Exception:
+        print("❌ Cursor wasn't open.")
+
 # ============
 # COMMAND DICT
 # ============
@@ -78,6 +113,8 @@ COMMANDS = {
     "volume up": volume_up,
     "volume down": volume_down,
     "mute": mute_volume,
+    "close notepad": close_notepad,
+    "close calculator": close_calc
 }
 
 def execute_command(text):
