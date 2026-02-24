@@ -181,6 +181,7 @@ def check_wake_phrase(text):
 # ==========
 
 def main():
+    global is_awake
     print("🧠 Loading model...")
     if not os.path.exists(MODEL_PATH):
         print("❌ ERROR: 'model' folder not found!")
