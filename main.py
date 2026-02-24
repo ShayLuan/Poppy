@@ -1,6 +1,18 @@
 # Toolbox
 import sys
 import os
+
+# Helper function to find paths whether running as script of .exe
+def resource_path(relative_path):
+    """
+    Get absolute path for resource, works for dev and for PyInstaller
+    """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
 import json
 import ctypes
 import time
@@ -9,7 +21,7 @@ from vosk import Model, KaldiRecognizer
 import pyaudio
 
 # Configuration
-MODEL_PATH = "model"
+MODEL_PATH = resource_path("model")
 SAMPLE_RATE = 16000
 
 # State variable
