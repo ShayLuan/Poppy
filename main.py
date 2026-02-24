@@ -1,6 +1,7 @@
 # Toolbox
 import sys
 import os
+import traceback
 
 # Helper function to find paths whether running as script of .exe
 def resource_path(relative_path):
@@ -13,11 +14,25 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+def log_error(error):
+    """Write startup/runtime errors to log so they're visible when running with --noconsole."""
+    with open("poppy_error.log", "w") as f:
+        f.write(f"Error occurred: {str(error)}\n")
+        f.write(traceback.format_exc())
+    print(f"Error saved to poppy_error.log")
+
 import json
 import ctypes
 import time
 import subprocess
-from vosk import Model, KaldiRecognizer
+
+# Defer vosk import until after resource_path is defined (needed for bundled exe)
+try:
+    from vosk import Model, KaldiRecognizer
+except Exception as e:
+    if getattr(sys, "frozen", False):
+        log_error(e)
+    raise
 import pyaudio
 
 # Configuration
@@ -165,51 +180,61 @@ def check_wake_phrase(text):
 # MAIN SETUP
 # ==========
 
-print("🧠 Loading model...")
-if not os.path.exists(MODEL_PATH):
-    print("❌ ERROR: 'model' folder not found!")
-    sys.exit(1)
+def main():
+    print("🧠 Loading model...")
+    if not os.path.exists(MODEL_PATH):
+        print("❌ ERROR: 'model' folder not found!")
+        sys.exit(1)
 
-model = Model(lang="en-us", model_path=MODEL_PATH)
-recognizer = KaldiRecognizer(model, SAMPLE_RATE)
+    model = Model(lang="en-us", model_path=MODEL_PATH)
+    recognizer = KaldiRecognizer(model, SAMPLE_RATE)
 
-print("🎤 Opening microphone...")
-mic = pyaudio.PyAudio()
-stream = mic.open(format=pyaudio.paInt16,
-                  channels=1, 
-                  rate=SAMPLE_RATE,
-                  input=True,
-                  frames_per_buffer=8000)
+    print("🎤 Opening microphone...")
+    mic = pyaudio.PyAudio()
+    stream = mic.open(format=pyaudio.paInt16,
+                      channels=1,
+                      rate=SAMPLE_RATE,
+                      input=True,
+                      frames_per_buffer=8000)
 
-stream.start_stream()
+    stream.start_stream()
 
-print("✅ Poppy is ready! ... but currently asleep.")
-print("🗣️ Say 'Hey Poppy' to wake me up.\n")
+    print("✅ Poppy is ready! ... but currently asleep.")
+    print("🗣️ Say 'Hey Poppy' to wake me up.\n")
 
-# MAIN LISTENING LOOP
-try:
-    while True:
-        data = stream.read(4000, exception_on_overflow=False)
+    # MAIN LISTENING LOOP
+    try:
+        while True:
+            data = stream.read(4000, exception_on_overflow=False)
 
-        if recognizer.AcceptWaveform(data):
-            result = recognizer.Result()
-            data_json = json.loads(result)          # json.loads returns a dict
-            text = data_json["text"]                # access dict elements
+            if recognizer.AcceptWaveform(data):
+                result = recognizer.Result()
+                data_json = json.loads(result)          # json.loads returns a dict
+                text = data_json["text"]                # access dict elements
 
-            if text:
-                print(f"🗣️ You said: {text}")
+                if text:
+                    print(f"🗣️ You said: {text}")
 
-                if not is_awake:
-                    if check_wake_phrase(text):
-                        is_awake = True
-                else:
-                    status = execute_command(text)
-                    if status == "sleep":
-                        is_awake = False
+                    if not is_awake:
+                        if check_wake_phrase(text):
+                            is_awake = True
+                    else:
+                        status = execute_command(text)
+                        if status == "sleep":
+                            is_awake = False
 
-except KeyboardInterrupt:
-    print("\n👋 Poppy says bye!")
-finally:
-    stream.stop_stream()
-    stream.close()
-    mic.terminate()
+    except KeyboardInterrupt:
+        print("\n👋 Poppy says bye!")
+    finally:
+        stream.stop_stream()
+        stream.close()
+        mic.terminate()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        if getattr(sys, "frozen", False):
+            log_error(e)
+        raise
